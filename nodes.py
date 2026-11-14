@@ -257,7 +257,8 @@ class LLAMA_CPP_STORAGE:
                 case _:
                     raise ValueError(f'Unknown model type: "{chat_handler}"')
         
-        cls.clean(all=True)
+        # 会話履歴は残す (VRAM 解放後の再読み込みで会話が消えないように)
+        cls.clean()
         cls.current_config = config.copy()
         model = config["model"]
         mmproj = config["mmproj"]
@@ -339,7 +340,8 @@ any_type = AnyType("*")
 if not hasattr(mm, "unload_all_models_backup"):
     mm.unload_all_models_backup = mm.unload_all_models
     def patched_unload_all_models(*args, **kwargs):
-        LLAMA_CPP_STORAGE.clean(all=True)
+        # モデルは降ろすが会話履歴は残す
+        LLAMA_CPP_STORAGE.clean()
         result = mm.unload_all_models_backup(*args, **kwargs)
         return result
     mm.unload_all_models = patched_unload_all_models
@@ -580,9 +582,6 @@ class llama_cpp_instruct_adv:
             
         if parameters is None:
             parameters = {}
-            
-        if _MTMD:
-            parameters.pop("present_penalty", None)
             
         _uid = parameters.get("state_uid", None)
         _parameters = parameters.copy()
